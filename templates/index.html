@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL Powerplay ML</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f7f7f7; color: #1a1a1a; font-size: 15px; line-height: 1.6;
+  }
+
+  header {
+    background: #fff; border-bottom: 1px solid #e5e5e5;
+    padding: 0 32px; display: flex; align-items: center; gap: 32px;
+    height: 56px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 16px; font-weight: 600; color: #1a1a1a; letter-spacing: -0.3px; }
+  .logo span { color: #2563eb; }
+
+  nav { display: flex; gap: 4px; }
+  .tab-btn {
+    background: none; border: none; padding: 6px 14px; font-size: 14px;
+    cursor: pointer; color: #666; border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab-btn:hover  { background: #f0f0f0; color: #1a1a1a; }
+  .tab-btn.active { background: #eff6ff; color: #2563eb; font-weight: 500; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .card {
+    background: #fff; border: 1px solid #e5e5e5;
+    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 600; color: #888;
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 16px;
+  }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 13px; color: #555; font-weight: 500; }
+
+  select {
+    padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 14px; color: #1a1a1a; background: #fff; width: 100%;
+    appearance: none; transition: border-color 0.15s; cursor: pointer;
+  }
+  select:focus { outline: none; border-color: #2563eb; }
+
+  /* venue chips */
+  #venue-suggestions { display: none; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  #venue-suggestions.visible { display: flex; }
+  .venue-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+    border: 1.5px solid #e0e0e0; border-radius: 20px; font-size: 13px;
+    cursor: pointer; background: #fff; color: #444;
+    transition: border-color 0.15s, background 0.15s, color 0.15s; white-space: nowrap;
+  }
+  .venue-chip:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+  .venue-chip.selected { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; font-weight: 500; }
+  .chip-label { font-size: 11px; color: #aaa; margin-left: 2px; }
+  .venue-chip.selected .chip-label { color: #93c5fd; }
+  .divider-label {
+    font-size: 12px; color: #bbb; display: flex; align-items: center; gap: 8px; margin: 4px 0;
+  }
+  .divider-label::before, .divider-label::after { content: ""; flex: 1; height: 1px; background: #eee; }
+
+  .checkbox-row { display: flex; gap: 24px; margin-top: 4px; }
+  .checkbox-row label { display: flex; align-items: center; gap: 7px; cursor: pointer; font-weight: 400; color: #444; }
+  input[type="checkbox"] { width: 16px; height: 16px; accent-color: #2563eb; }
+
+  .predict-btn {
+    margin-top: 18px; width: 100%; padding: 11px; background: #2563eb; color: #fff;
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .predict-btn:hover    { background: #1d4ed8; }
+  .predict-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+  /* result */
+  #result-area { display: none; }
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  .innings-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px; }
+  .innings-label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .team-name { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1a1a1a; }
+
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-key { font-size: 13px; color: #666; }
+  .stat-val { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-High       { background: #fee2e2; color: #b91c1c; }
+  .badge-Medium     { background: #fef9c3; color: #92400e; }
+  .badge-Low        { background: #dcfce7; color: #166534; }
+  .badge-Regular    { background: #eff6ff; color: #1d4ed8; }
+  .badge-Occasional { background: #f0fdf4; color: #166534; }
+  .badge-Rare       { background: #f9fafb; color: #9ca3af; border: 1px solid #e5e7eb; }
+
+  .agg-bar-wrap { margin: 14px 0 6px; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+  .agg-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .fill-High   { background: #ef4444; }
+  .fill-Medium { background: #f59e0b; }
+  .fill-Low    { background: #22c55e; }
+
+  .verdict-card {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;
+    padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .verdict-icon { font-size: 20px; }
+  .verdict-text { font-size: 14px; color: #1e40af; }
+  .verdict-text strong { font-weight: 600; }
+  .warn-list { margin-top: 10px; font-size: 12px; color: #bbb; }
+
+  /* ---- SHAP section ---- */
+  .explain-toggle {
+    width: 100%; padding: 11px 16px;
+    background: #fff; border: 1px solid #e5e5e5; border-radius: 10px;
+    font-size: 14px; color: #555; cursor: pointer; text-align: left;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: border-color 0.15s, color 0.15s;
+    margin-bottom: 0;
+  }
+  .explain-toggle:hover { border-color: #2563eb; color: #2563eb; }
+  .explain-toggle .toggle-label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .explain-toggle .toggle-arrow { font-size: 11px; color: #bbb; transition: transform 0.2s; }
+  .explain-toggle.open .toggle-arrow { transform: rotate(180deg); }
+  .explain-toggle .shap-loading { font-size: 12px; color: #aaa; font-weight: 400; }
+
+  .explain-panel {
+    display: none;
+    background: #fff; border: 1px solid #e5e5e5; border-top: none;
+    border-radius: 0 0 10px 10px; padding: 20px;
+    margin-bottom: 0;
+  }
+  .explain-panel.open { display: block; }
+
+  .shap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  .shap-col-title {
+    font-size: 13px; font-weight: 600; color: #444;
+    margin-bottom: 14px; padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .shap-baseline {
+    font-size: 12px; color: #999; margin-bottom: 14px;
+  }
+
+  .shap-row { margin-bottom: 12px; }
+  .shap-row-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .shap-feat-name { font-size: 12px; color: #555; flex: 1; padding-right: 8px; line-height: 1.3; }
+  .shap-val-label { font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .shap-val-up   { color: #16a34a; }
+  .shap-val-down { color: #dc2626; }
+
+  .shap-bar-track {
+    height: 6px; background: #f0f0f0; border-radius: 3px;
+    position: relative; overflow: visible;
+  }
+  .shap-bar-fill {
+    height: 100%; border-radius: 3px;
+    position: absolute;
+    transition: width 0.5s ease;
+  }
+  .shap-bar-up   { background: #22c55e; left: 50%; }
+  .shap-bar-down { background: #ef4444; right: 50%; }
+  .shap-midline {
+    position: absolute; left: 50%; top: -3px;
+    width: 1px; height: 12px; background: #ccc;
+  }
+
+  .shap-feat-value { font-size: 11px; color: #bbb; margin-top: 2px; }
+
+  .shap-error { font-size: 13px; color: #999; padding: 8px 0; }
+
+  /* error */
+  .error-card {
+    background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 10px; padding: 14px 18px; color: #b91c1c; font-size: 14px;
+  }
+
+  /* leaderboard / venues */
+  .controls-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .controls-row label { font-size: 13px; color: #555; font-weight: 500; }
+  .controls-row select { width: auto; min-width: 130px; padding: 7px 10px; font-size: 13px; }
+
+  .tier-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tier-btn {
+    padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid transparent; transition: opacity 0.15s; background: none;
+  }
+  .tier-btn-Regular    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  .tier-btn-Occasional { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+  .tier-btn-Rare       { background: #f9fafb; color: #9ca3af; border-color: #e5e7eb; }
+  .tier-btn.off        { opacity: 0.35; }
+
+  table {
+    width: 100%; border-collapse: collapse; background: #fff;
+    border-radius: 12px; overflow: hidden; border: 1px solid #e5e5e5;
+  }
+  th {
+    background: #f9f9f9; text-align: left; padding: 11px 16px;
+    font-size: 12px; font-weight: 600; color: #888;
+    text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e5e5e5;
+  }
+  td { padding: 11px 16px; font-size: 14px; color: #1a1a1a; border-bottom: 1px solid #f5f5f5; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  tr.row-rare td { color: #c0c0c0; }
+  .rank-cell { color: #bbb; font-weight: 600; font-size: 13px; }
+  .num-cell  { font-variant-numeric: tabular-nums; }
+
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid #fff; border-top-color: transparent;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+  }
+  .spinner-sm {
+    display: inline-block; width: 12px; height: 12px;
+    border: 1.5px solid #aaa; border-top-color: transparent;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 4px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 620px) {
+    .form-grid   { grid-template-columns: 1fr; }
+    .result-grid { grid-template-columns: 1fr; }
+    .shap-grid   { grid-template-columns: 1fr; }
+    header       { padding: 0 16px; gap: 16px; }
+    main         { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">IPL Powerplay <span>ML</span></div>
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('predict', this)">Predict</button>
+    <button class="tab-btn"       onclick="switchTab('leaderboard', this)">Leaderboard</button>
+    <button class="tab-btn"       onclick="switchTab('venues', this)">Venues</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ====== PREDICT ====== -->
+  <div id="tab-predict" class="tab-panel active">
+    <div class="card">
+      <div class="card-title">Match Setup</div>
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="team-a">Team A (bats first)</label>
+          <select id="team-a" onchange="onTeamChange()">
+            <option value="">Select team…</option>
+            {% for t in teams %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="team-b">Team B (bats second)</label>
+          <select id="team-b" onchange="onTeamChange()">
+            <option value="">Select team…</option>
+            {% for t in teams %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label>Venue</label>
+          <div id="venue-suggestions"></div>
+          <div id="venue-divider" class="divider-label" style="display:none">other venue</div>
+          <select id="venue" onchange="onVenueDropdownChange()">
+            <option value="">Select venue…</option>
+            {% for v in venues %}
+            <option value="{{ v }}">{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="season">Season</label>
+          <select id="season">
+            {% for s in seasons %}
+            <option value="{{ s }}" {% if loop.first %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+            <option value="2026">2026</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="justify-content:flex-end;padding-bottom:4px">
+          <label style="margin-bottom:10px">Match flags</label>
+          <div class="checkbox-row">
+            <label><input type="checkbox" id="day-night"> Day-Night</label>
+            <label><input type="checkbox" id="playoff"> Playoff</label>
+          </div>
+        </div>
+
+      </div>
+      <button class="predict-btn" id="predict-btn" onclick="runPrediction()">
+        Predict Powerplay
+      </button>
+    </div>
+    <div id="result-area"></div>
+  </div>
+
+
+  <!-- ====== LEADERBOARD ====== -->
+  <div id="tab-leaderboard" class="tab-panel">
+    <div class="controls-row">
+      <label for="lb-season">Season</label>
+      <select id="lb-season" onchange="loadLeaderboard()">
+        <option value="">All time</option>
+        {% for s in seasons %}
+        <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div id="leaderboard-table"><p style="color:#999;font-size:14px">Loading…</p></div>
+  </div>
+
+
+  <!-- ====== VENUES ====== -->
+  <div id="tab-venues" class="tab-panel">
+    <div class="controls-row">
+      <span style="font-size:13px;color:#555;font-weight:500">Filter</span>
+      <div class="tier-filters">
+        <button id="btn-Regular"    class="tier-btn tier-btn-Regular"    onclick="toggleTier('Regular')">● Regular</button>
+        <button id="btn-Occasional" class="tier-btn tier-btn-Occasional" onclick="toggleTier('Occasional')">● Occasional</button>
+        <button id="btn-Rare"       class="tier-btn tier-btn-Rare"       onclick="toggleTier('Rare')">● Rare</button>
+      </div>
+    </div>
+    <div id="venues-table"><p style="color:#999;font-size:14px">Loading…</p></div>
+  </div>
+
+</main>
+
+<script>
+const HOME_GROUNDS = {{ home_grounds | safe }};
+let selectedVenue = "";
+let _venueRows    = [];
+const activeTiers = new Set(["Regular", "Occasional", "Rare"]);
+
+// last predict payload — reused by the explain call
+let _lastPayload  = null;
+
+// ==========================================================================
+// Tabs
+// ==========================================================================
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  btn.classList.add("active");
+  if (name === "leaderboard") loadLeaderboard();
+  if (name === "venues")      loadVenues();
+}
+
+// ==========================================================================
+// Venue chips
+// ==========================================================================
+function onTeamChange() {
+  const teamA = document.getElementById("team-a").value;
+  const teamB = document.getElementById("team-b").value;
+  const box     = document.getElementById("venue-suggestions");
+  const divider = document.getElementById("venue-divider");
+
+  const chips = [];
+  if (teamA && HOME_GROUNDS[teamA]) chips.push({ team: teamA, venue: HOME_GROUNDS[teamA] });
+  if (teamB && HOME_GROUNDS[teamB] && HOME_GROUNDS[teamB] !== HOME_GROUNDS[teamA])
+    chips.push({ team: teamB, venue: HOME_GROUNDS[teamB] });
+
+  if (chips.length === 0) {
+    box.innerHTML = ""; box.classList.remove("visible"); divider.style.display = "none"; return;
+  }
+
+  box.innerHTML = chips.map(c => {
+    const shortName = c.venue.length > 32 ? c.venue.substring(0, 30) + "…" : c.venue;
+    const shortTeam = c.team
+      .replace("Royal Challengers Bengaluru","RCB").replace("Lucknow Super Giants","LSG")
+      .replace("Gujarat Titans","GT").replace(" Indians","").replace(" Kings","")
+      .replace(" Capitals","").replace(" Royals","").replace(" Knight Riders","")
+      .replace(" Super Kings","");
+    return `<button class="venue-chip" data-venue="${c.venue}" onclick="selectChip(this)">
+      🏟 ${shortName} <span class="chip-label">${shortTeam}</span>
+    </button>`;
+  }).join("");
+
+  box.classList.add("visible");
+  divider.style.display = "flex";
+  syncChips();
+}
+
+function selectChip(el) {
+  selectedVenue = el.dataset.venue;
+  const dd = document.getElementById("venue");
+  dd.value = "";
+  for (const opt of dd.options) { if (opt.value === selectedVenue) { dd.value = selectedVenue; break; } }
+  syncChips();
+}
+
+function onVenueDropdownChange() {
+  selectedVenue = document.getElementById("venue").value;
+  syncChips();
+}
+
+function syncChips() {
+  document.querySelectorAll(".venue-chip").forEach(c =>
+    c.classList.toggle("selected", c.dataset.venue === selectedVenue)
+  );
+}
+
+// ==========================================================================
+// Predict
+// ==========================================================================
+async function runPrediction() {
+  const teamA      = document.getElementById("team-a").value;
+  const teamB      = document.getElementById("team-b").value;
+  const venue      = document.getElementById("venue").value || selectedVenue;
+  const season     = parseInt(document.getElementById("season").value);
+  const isDayNight = document.getElementById("day-night").checked;
+  const isPlayoff  = document.getElementById("playoff").checked;
+  const area       = document.getElementById("result-area");
+  const btn        = document.getElementById("predict-btn");
+
+  if (!teamA || !teamB) { showError(area, "Please select both teams."); return; }
+  if (!venue)           { showError(area, "Please select a venue."); return; }
+  if (teamA === teamB)  { showError(area, "Team A and Team B must be different."); return; }
+
+  _lastPayload = { team_a: teamA, team_b: teamB, venue, season, is_day_night: isDayNight, is_playoff: isPlayoff };
+
+  btn.disabled  = true;
+  btn.innerHTML = `<span class="spinner"></span> Predicting…`;
+  area.style.display = "none";
+
+  try {
+    const resp = await fetch("/api/predict", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(_lastPayload),
+    });
+    const data = await resp.json();
+    area.style.display = "block";
+    area.innerHTML = data.error ? `<div class="error-card">${data.error}</div>` : renderResult(data);
+  } catch (err) {
+    showError(area, "Request failed: " + err.message);
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = "Predict Powerplay";
+  }
+}
+
+function showError(area, msg) {
+  area.style.display = "block";
+  area.innerHTML = `<div class="error-card">${msg}</div>`;
+}
+
+function renderResult(data) {
+  const { innings1, innings2, more_aggressive, diff } = data;
+
+  function card(inn, lbl) {
+    const barW = Math.min(100, (inn.aggression_pct / 30) * 100).toFixed(1);
+    const warn = inn.null_features && inn.null_features.length
+      ? `<div class="warn-list">⚠ No prior history for: ${inn.null_features.join(", ")}</div>` : "";
+    return `
+      <div class="innings-card">
+        <div class="innings-label">${lbl}</div>
+        <div class="team-name">${inn.batting_team}</div>
+        <div class="agg-bar-wrap"><div class="agg-bar-fill fill-${inn.label}" style="width:${barW}%"></div></div>
+        <div class="stat-row">
+          <span class="stat-key">Aggression</span>
+          <span class="stat-val">${inn.aggression_pct.toFixed(2)}%
+            <span class="badge badge-${inn.label}">${inn.label}</span>
+          </span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-key">Predicted PP runs</span>
+          <span class="stat-val num-cell">${inn.pp_runs.toFixed(1)}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-key">Bowling team</span>
+          <span class="stat-val">${inn.bowling_team}</span>
+        </div>
+        ${warn}
+      </div>`;
+  }
+
+  return `
+    <div class="result-grid">
+      ${card(innings1, "1st Innings")}
+      ${card(innings2, "2nd Innings")}
+    </div>
+    <div class="verdict-card">
+      <div class="verdict-icon">⚡</div>
+      <div class="verdict-text">
+        <strong>${more_aggressive}</strong> expected to be more aggressive in the powerplay
+        (+${diff.toFixed(2)}%)
+      </div>
+    </div>
+    <button class="explain-toggle" id="explain-toggle" onclick="toggleExplain()">
+      <span class="toggle-label">🔍 Explain this prediction</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+    <div class="explain-panel" id="explain-panel">
+      <p style="color:#999;font-size:13px"><span class="spinner-sm"></span> Computing SHAP values…</p>
+    </div>`;
+}
+
+// ==========================================================================
+// SHAP explanation
+// ==========================================================================
+let _explainLoaded  = false;
+let _explainLoading = false;
+
+async function toggleExplain() {
+  const toggle = document.getElementById("explain-toggle");
+  const panel  = document.getElementById("explain-panel");
+
+  const isOpen = panel.classList.contains("open");
+
+  if (isOpen) {
+    panel.classList.remove("open");
+    toggle.classList.remove("open");
+    return;
+  }
+
+  // Open
+  panel.classList.add("open");
+  toggle.classList.add("open");
+
+  // Only fetch once per prediction
+  if (_explainLoaded || _explainLoading) return;
+  _explainLoading = true;
+
+  try {
+    const resp = await fetch("/api/explain", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(_lastPayload),
+    });
+    const data = await resp.json();
+    _explainLoaded = true;
+
+    if (data.error) {
+      panel.innerHTML = `<p class="shap-error">Could not compute explanation: ${data.error}</p>`;
+      return;
+    }
+
+    panel.innerHTML = renderShap(data);
+
+  } catch (err) {
+    panel.innerHTML = `<p class="shap-error">Failed to load explanation: ${err.message}</p>`;
+  } finally {
+    _explainLoading = false;
+  }
+}
+
+function renderShap(data) {
+  const { innings1, innings2, innings1_team, innings2_team } = data;
+
+  function shapCol(exp, teamName, inningsLabel) {
+    // Max abs shap for scaling bars — minimum 1.0 to avoid divide-by-zero
+    const maxAbs = Math.max(1.0, ...exp.features.map(f => Math.abs(f.shap)));
+
+    const rows = exp.features.map(f => {
+      const pct  = Math.min(48, (Math.abs(f.shap) / maxAbs) * 48); // max 48% each side
+      const sign = f.shap >= 0 ? "+" : "";
+      const cls  = f.shap >= 0 ? "up" : "down";
+      const valStr = f.value !== null ? f.value.toFixed(2) : "N/A (no history)";
+
+      return `
+        <div class="shap-row">
+          <div class="shap-row-header">
+            <span class="shap-feat-name">${f.name}</span>
+            <span class="shap-val-label shap-val-${cls}">${sign}${f.shap.toFixed(3)}%</span>
+          </div>
+          <div class="shap-bar-track">
+            <div class="shap-midline"></div>
+            <div class="shap-bar-fill shap-bar-${cls}" style="width:${pct}%"></div>
+          </div>
+          <div class="shap-feat-value">Feature value: ${valStr}</div>
+        </div>`;
+    }).join("");
+
+    return `
+      <div>
+        <div class="shap-col-title">${inningsLabel} — ${teamName}</div>
+        <div class="shap-baseline">
+          Baseline avg: ${exp.baseline.toFixed(2)}% &nbsp;→&nbsp; Predicted: <strong>${exp.predicted.toFixed(2)}%</strong>
+        </div>
+        ${rows}
+      </div>`;
+  }
+
+  return `
+    <div style="font-size:12px;color:#bbb;margin-bottom:16px">
+      Each bar shows how much a feature pushed the aggression score
+      <span style="color:#16a34a;font-weight:600">up ▶</span> or
+      <span style="color:#dc2626;font-weight:600">◀ down</span> from the baseline average.
+    </div>
+    <div class="shap-grid">
+      ${shapCol(innings1, innings1_team, "1st Innings")}
+      ${shapCol(innings2, innings2_team, "2nd Innings")}
+    </div>`;
+}
+
+// ==========================================================================
+// Leaderboard
+// ==========================================================================
+async function loadLeaderboard() {
+  const season = document.getElementById("lb-season").value;
+  const wrap   = document.getElementById("leaderboard-table");
+  wrap.innerHTML = `<p style="color:#999;font-size:14px">Loading…</p>`;
+  const resp = await fetch("/api/leaderboard" + (season ? "?season=" + season : ""));
+  const rows = await resp.json();
+  if (!rows.length) { wrap.innerHTML = `<p style="color:#999;font-size:14px">No data.</p>`; return; }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>#</th><th>Team</th><th>Aggression %</th>
+        <th>Avg PP runs</th><th>Avg wickets</th><th>Innings</th><th>Label</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td class="rank-cell">${r.rank}</td>
+          <td>${r.batting_team}</td>
+          <td class="num-cell">${r.mean_aggression.toFixed(2)}%</td>
+          <td class="num-cell">${r.mean_runs.toFixed(1)}</td>
+          <td class="num-cell">${r.mean_wickets.toFixed(2)}</td>
+          <td class="num-cell">${r.innings_count}</td>
+          <td><span class="badge badge-${r.label}">${r.label}</span></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+
+// ==========================================================================
+// Venues
+// ==========================================================================
+function toggleTier(tier) {
+  const btn = document.getElementById("btn-" + tier);
+  if (activeTiers.has(tier)) { activeTiers.delete(tier); btn.classList.add("off"); }
+  else                        { activeTiers.add(tier);    btn.classList.remove("off"); }
+  renderVenues();
+}
+
+async function loadVenues() {
+  if (_venueRows.length === 0) {
+    const resp = await fetch("/api/venues");
+    _venueRows = await resp.json();
+  }
+  renderVenues();
+}
+
+function renderVenues() {
+  const wrap = document.getElementById("venues-table");
+  const rows = _venueRows.filter(r => activeTiers.has(r.usage_tier));
+  if (!rows.length) {
+    wrap.innerHTML = `<p style="color:#999;font-size:14px">No venues match the selected filters.</p>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>#</th><th>Venue</th><th>Avg aggression %</th>
+        <th>Avg PP runs</th><th>Innings</th><th>Usage</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `
+        <tr class="${r.usage_tier === "Rare" ? "row-rare" : ""}">
+          <td class="rank-cell">${r.rank}</td>
+          <td>${r.venue}</td>
+          <td class="num-cell">${r.mean_aggression.toFixed(2)}%</td>
+          <td class="num-cell">${r.mean_runs.toFixed(1)}</td>
+          <td class="num-cell">${r.innings_count}</td>
+          <td><span class="badge badge-${r.usage_tier}">${r.usage_tier}</span></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+</script>
+
+</body>
+</html>

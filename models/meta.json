@@ -1,0 +1,32 @@
+{
+  "low_thresh": 11.1111,
+  "high_thresh": 15.2778,
+  "label_map": {
+    "0": "Low",
+    "1": "Medium",
+    "2": "High"
+  },
+  "feature_cols": [
+    "bat_pp_aggression_prev1",
+    "bat_pp_aggression_prev2",
+    "bat_pp_aggression_2s_avg",
+    "bat_pp_aggression_trend",
+    "bat_pp_runs_prev1",
+    "bat_pp_wicket_rate_prev1",
+    "bowl_pp_economy_prev1",
+    "bowl_pp_wicket_rate_prev1",
+    "bowl_pp_economy_trend",
+    "h2h_pp_aggression",
+    "venue_pp_aggression",
+    "venue_pp_runs",
+    "venue_innings_count",
+    "innings_num",
+    "is_day_night",
+    "season_index",
+    "is_playoff"
+  ],
+  "train_rows": 1224,
+  "train_mae_aggression": 2.599388442339305,
+  "train_mae_runs": 6.253140723783206,
+  "train_acc_label": 0.8390522875816994
+}

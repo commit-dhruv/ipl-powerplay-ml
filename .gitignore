@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Data files (too large / not yours to redistribute)
+data/ipl/
+data/t20s/
+data/processed/
+
+# Generated model binaries (regenerate via train.py)
+models/*.pkl
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Misc
+*.docx
+debug_shap.py
