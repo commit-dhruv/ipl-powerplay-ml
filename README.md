@@ -248,6 +248,9 @@ python app.py
 
 Open: **http://localhost:5000**
 
+> **Note:** Model files are not included in the repository.
+> Run Steps 1–4 of the pipeline to generate them before starting the web app.
+
 ---
 
 ## Evaluation Results
